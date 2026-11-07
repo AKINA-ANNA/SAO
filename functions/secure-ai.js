@@ -1,16 +1,20 @@
 const TAVILY_URL = "https://api.tavily.com/search";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const PRODUCTION_ORIGIN = "https://study-as-otaku.vercel.app";
 
 function applyCors(req, res) {
-  // Defaults to this production site; set ALLOWED_ORIGIN in Nhost to override it.
-  const allowedOrigin = process.env.ALLOWED_ORIGIN || "https://study-as-otaku.vercel.app";
+  const configuredOrigins = (process.env.ALLOWED_ORIGIN || "")
+    .split(",")
+    .map(origin => origin.trim())
+    .filter(Boolean);
+  const allowedOrigins = new Set([PRODUCTION_ORIGIN, ...configuredOrigins]);
   const origin = req.get("origin");
 
-  if (origin && origin !== allowedOrigin) {
+  if (origin && !allowedOrigins.has(origin)) {
     return false;
   }
 
-  res.set("Access-Control-Allow-Origin", allowedOrigin);
+  res.set("Access-Control-Allow-Origin", origin || PRODUCTION_ORIGIN);
   res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.set("Access-Control-Allow-Headers", "Content-Type");
   res.set("Vary", "Origin");
