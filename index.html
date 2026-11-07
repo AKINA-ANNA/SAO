@@ -940,8 +940,8 @@
     </div>
 
     <script>
-        // Public Nhost function URL. Replace the two placeholders with your Nhost project values.
-        const NHOST_FUNCTIONS_URL = "https://bxifmlkclhicnibmpbmu.functions.eu-central-1.nhost.run/v1/secure-ai";
+        // Nhost Functions base URL. callSecureAi adds /secure-ai below.
+        const NHOST_FUNCTIONS_URL = "https://bxifmlkclhicnibmpbmu.functions.eu-central-1.nhost.run/v1";
 
         async function callSecureAi(action, payload) {
             if (NHOST_FUNCTIONS_URL.includes("YOUR_SUBDOMAIN") || NHOST_FUNCTIONS_URL.includes("YOUR_REGION")) {
