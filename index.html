@@ -1,0 +1,2230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAO: Study As a Otaku</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Lexend:wght@300;400;700&family=Kalam:wght@700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        :root {
+            --itsuki-red: #e63946;
+            --paper: #fdfaf0;
+            --wood: #432818;
+            --star: #ffb703;
+            --ink: #1d3557;
+        }
+
+        body {
+            margin: 0; font-family: 'Lexend', sans-serif;
+            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), 
+                        url('https://www.transparenttextures.com/patterns/wood-pattern.png'), #5d4037;
+            min-height: 100vh; display: flex; justify-content: center; align-items: center;
+            overflow-x: hidden; cursor: url('https://cur.cursors-4u.net/anime/ani-11/ani1013.cur'), auto;
+        }
+
+        /* --- Desk Layout --- */
+        .desk-container {
+            width: 95%; max-width: 1100px; height: 85vh;
+            display: flex; gap: 20px; position: relative;
+        }
+
+        /* --- Itsuki Sprite Side --- */
+        .itsuki-sprite-area {
+            flex: 1; display: flex; flex-direction: column; justify-content: flex-end;
+            align-items: center; position: relative;
+        }
+
+        .sprite-img {
+            max-width: 100%; max-height: 80%; object-fit: contain;
+            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4));
+        }
+
+        .speech-bubble {
+            position: absolute; top: 10%; background: white;
+            padding: 20px; border-radius: 20px; width: 80%;
+            border: 3px solid var(--itsuki-red); font-family: 'Kalam', cursive;
+            font-size: 1.2rem; box-shadow: 10px 10px 0px rgba(0,0,0,0.2);
+            display: none; z-index: 10;
+        }
+
+        /* --- Notebook Side --- */
+        .notebook {
+            flex: 1.5; background: var(--paper); border-radius: 10px;
+            box-shadow: 15px 15px 0px rgba(0,0,0,0.3);
+            position: relative; padding: 40px; overflow-y: auto;
+            border-left: 30px solid #eee; /* Binding effect */
+        }
+
+        .notebook::before {
+            content: ''; position: absolute; left: 10px; top: 0; bottom: 0;
+            width: 2px; background: rgba(230, 57, 70, 0.2);
+        }
+
+        /* --- Setup UI --- */
+        .setup-card h1 { font-family: 'Fredoka'; color: var(--itsuki-red); font-size: 2.5rem; margin: 0; }
+        input, textarea, select {
+            width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px;
+            border: 1px solid #ccc; font-family: inherit;
+            box-sizing: border-box;
+        }
+
+        .date-range { display: flex; gap: 10px; }
+        .date-field { flex: 1; min-width: 0; }
+        .date-field label { display: block; font-size: 0.85rem; font-weight: 600; }
+        .date-field input { min-width: 0; }
+
+        .btn-study {
+            background: var(--itsuki-red); color: white; border: none;
+            padding: 15px 30px; font-family: 'Fredoka'; font-size: 1.2rem;
+            border-radius: 50px; cursor: pointer; width: 100%;
+            transition: 0.3s; box-shadow: 0 5px 0px #b91d2c;
+        }
+
+        .btn-study:hover { transform: translateY(-3px); box-shadow: 0 8px 0px #b91d2c; }
+
+        /* --- Quiz Content --- */
+        #quiz-content { display: none; }
+        .q-num { color: var(--itsuki-red); font-weight: bold; font-size: 1.2rem; }
+        .q-text { font-size: 1.6rem; font-weight: 700; margin: 15px 0 30px; line-height: 1.3; }
+
+        .option {
+            padding: 15px; border: 2px solid #ddd; border-radius: 10px;
+            margin-bottom: 12px; cursor: pointer; transition: 0.2s;
+            font-weight: 600; display: flex; align-items: center;
+        }
+        .option:hover { background: #fffcf0; border-color: var(--itsuki-red); transform: rotate(-1deg); }
+        .option.correct { background: #d1fae5; border-color: #10b981; color: #065f46; }
+        .option.wrong { background: #fee2e2; border-color: #ef4444; color: #991b1b; }
+
+        /* --- Loading Overlays --- */
+        #loading {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+            z-index: 1000; flex-direction: column; align-items: center; justify-content: center;
+            color: white;
+        }
+        .star-loader { font-size: 50px; animation: rotate 2s infinite linear; }
+        @keyframes rotate { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+
+        .next-btn {
+            background: var(--ink); color: white; width: 100%; padding: 15px;
+            border-radius: 10px; border: none; font-weight: bold; margin-top: 20px;
+            display: none; cursor: pointer;
+        }
+
+        .report-list { margin: 25px 0; text-align: left; }
+        .report-item { border-top: 2px solid #eee; padding: 18px 0; }
+        .report-item h3 { margin: 0 0 8px; font-size: 1rem; }
+        .report-item p { margin: 6px 0; line-height: 1.45; }
+        .report-correct { color: #065f46; }
+        .report-wrong { color: #991b1b; }
+
+        /* ============================================================
+           MODE TOGGLE
+           ============================================================ */
+        #mode-toggle {
+            position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+            z-index: 3000; display: flex; justify-content: center;
+            transition: opacity .35s ease, transform .35s ease;
+        }
+        body.chat-open #mode-toggle {
+            opacity: 0; pointer-events: none; transform: translateX(-50%) translateY(-12px);
+        }
+        .toggle-pill {
+            position: relative; display: flex; width: 248px; padding: 5px;
+            border-radius: 999px; box-sizing: border-box;
+            background: linear-gradient(135deg, rgba(255,255,255,.28) 0%, rgba(255,255,255,.13) 42%, rgba(8,12,20,.6) 100%), rgba(8,12,20,.34);
+            border: 1px solid rgba(255,255,255,.38);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            box-shadow: 0 10px 34px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.45);
+        }
+        .mode-indicator {
+            position: absolute; top: 5px; left: 0; height: calc(100% - 10px);
+            width: calc(50% - 5px); transform: translateX(5px);
+            border-radius: 999px; background: #fff;
+            box-shadow: 0 4px 14px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.8);
+            transition: transform .38s cubic-bezier(.34,1.56,.64,1), width .38s cubic-bezier(.34,1.56,.64,1);
+            z-index: 0;
+        }
+        .mode-btn {
+            position: relative; z-index: 1; flex: 1; border: none; background: transparent;
+            padding: 9px 12px; border-radius: 999px; cursor: pointer;
+            font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: .92rem;
+            color: rgba(255,255,255,.9); transition: color .3s ease;
+            letter-spacing: .02em;
+        }
+        .mode-btn.active { color: #0b1220; }
+        .mode-btn:focus-visible { outline: 2px solid var(--star); outline-offset: 3px; }
+
+        /* ============================================================
+           SUBJECT MODE SHELL
+           ============================================================ */
+        #subject-app {
+            --accent: #8ab4ff;
+            --accent-2: #d9e6ff;
+            --subject-text: #f4f7ff;
+            --glass-bg: linear-gradient(135deg, rgba(255,255,255,.2) 0%, rgba(255,255,255,.08) 42%, rgba(8,12,20,.62) 100%), rgba(8,12,20,.38);
+            --glass-border: rgba(255,255,255,.32);
+            --glass-shadow: 0 20px 60px rgba(0,0,0,.46), inset 0 1px 0 rgba(255,255,255,.42), inset 0 -1px 0 rgba(255,255,255,.08);
+            display: none; position: fixed; inset: 0; z-index: 1000;
+            font-family: 'Lexend', sans-serif; color: var(--subject-text);
+        }
+        #subject-app[data-teacher="hori"] { --accent: #ff9e7a; --accent-2: #ffe0cf; }
+        #subject-app[data-teacher="anna"] { --accent: #ff9ec4; --accent-2: #ffe1ee; }
+        body.mode-subject #subject-app { display: block; }
+        body.mode-subject .desk-container { display: none; }
+        body.mode-subject { background: #070a10; overflow: hidden; color-scheme: dark; }
+        body.mode-subject #loading { display: none !important; }
+
+        #subject-bg {
+            position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover;
+            filter: blur(18px) brightness(.55) saturate(1.15);
+            transform: scale(1.08);
+            transition: filter .9s ease, transform .9s ease;
+        }
+        #subject-app.testing #subject-bg {
+            filter: blur(30px) brightness(.36) saturate(1.05);
+            transform: scale(1.16);
+        }
+        .subject-vignette {
+            position: fixed; inset: 0; pointer-events: none;
+            background:
+                radial-gradient(circle at 46% 38%, rgba(8,12,20,0) 0%, rgba(5,8,14,.42) 58%, rgba(3,5,10,.82) 100%),
+                linear-gradient(180deg, rgba(6,9,15,.28) 0%, rgba(6,9,15,.62) 100%);
+        }
+
+        .glass {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(26px) saturate(175%);
+            -webkit-backdrop-filter: blur(26px) saturate(175%);
+            box-shadow: var(--glass-shadow);
+        }
+        .glass-soft {
+            background: linear-gradient(135deg, rgba(255,255,255,.18) 0%, rgba(255,255,255,.07) 45%, rgba(8,12,20,.5) 100%), rgba(8,12,20,.32);
+            border: 1px solid rgba(255,255,255,.27);
+            backdrop-filter: blur(18px) saturate(155%);
+            -webkit-backdrop-filter: blur(18px) saturate(155%);
+            box-shadow: 0 10px 30px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.3);
+        }
+
+        #subject-shell {
+            position: relative; z-index: 2; height: 100vh;
+            width: min(1400px, 100%); margin: 0 auto;
+            display: flex; flex-direction: column;
+            padding: 74px 4vw 26px; box-sizing: border-box;
+        }
+        .subject-view { display: none; flex: 1; min-height: 0; }
+        .subject-view.active { display: flex; }
+        .subject-layout {
+            display: flex; gap: clamp(16px, 3vw, 40px);
+            flex: 1; min-height: 0; width: 100%;
+        }
+        .subject-sprite-area {
+            flex: .85; min-width: 0; display: flex; flex-direction: column;
+            justify-content: flex-end; align-items: center; position: relative;
+        }
+        .subject-sprite {
+            max-width: 100%; max-height: 78vh; object-fit: contain;
+            filter: drop-shadow(0 18px 42px rgba(0,0,0,.55));
+            transition: opacity .3s ease, transform .35s cubic-bezier(.34,1.56,.64,1);
+        }
+        .subject-bubble {
+            position: absolute; top: 7%; width: min(92%, 360px); z-index: 5;
+            padding: 16px 18px; border-radius: 20px; display: none;
+            font-family: 'Kalam', cursive; font-size: 1.05rem; line-height: 1.35;
+            color: #fff; max-height: 50vh; overflow-y: auto;
+        }
+        .subject-bubble strong { color: var(--accent); }
+        .bubble-expl { font-family: 'Lexend', sans-serif; font-size: .82rem; opacity: .78; display: inline-block; margin-top: 6px; }
+
+        .subject-panel {
+            flex: 1.45; min-width: 0; border-radius: 28px;
+            padding: 30px 34px; box-sizing: border-box;
+            overflow-y: auto; overscroll-behavior: contain;
+            position: relative;
+        }
+        .subject-panel::-webkit-scrollbar { width: 8px; }
+        .subject-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); border-radius: 8px; }
+        .subject-panel::-webkit-scrollbar-track { background: transparent; }
+
+        .eyebrow {
+            margin: 0 0 6px; font-size: .68rem; font-weight: 700;
+            letter-spacing: .16em; text-transform: uppercase;
+            color: var(--accent); opacity: .95;
+        }
+        .subject-panel h1 {
+            margin: 0; font-family: 'Fredoka', sans-serif; font-weight: 600;
+            font-size: clamp(1.8rem, 3vw, 2.5rem); line-height: 1.05;
+            letter-spacing: -.02em;
+        }
+        .muted { margin: 8px 0 0; color: rgba(244,247,255,.78); font-size: .88rem; line-height: 1.5; }
+        .panel-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+
+        .ghost-btn {
+            border: 1px solid rgba(255,255,255,.34);
+            background: linear-gradient(135deg, rgba(255,255,255,.2), rgba(8,12,20,.42)), rgba(8,12,20,.3);
+            color: rgba(255,255,255,.98); padding: 10px 16px; border-radius: 999px;
+            font-family: 'Lexend', sans-serif; font-size: .78rem; font-weight: 600;
+            cursor: pointer; white-space: nowrap; transition: .2s ease;
+            backdrop-filter: blur(14px);
+        }
+        .ghost-btn:hover { background: linear-gradient(135deg, rgba(255,255,255,.3), rgba(8,12,20,.5)), rgba(8,12,20,.36); transform: translateY(-1px); }
+
+        .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
+        .field { min-width: 0; }
+        .field.full { grid-column: 1 / -1; }
+        .field label {
+            display: block; margin-bottom: 7px; font-size: .74rem;
+            font-weight: 600; letter-spacing: .04em; color: rgba(244,247,255,.9);
+        }
+        .subject-panel input,
+        .subject-panel textarea,
+        .subject-panel select {
+            width: 100%; box-sizing: border-box; margin: 0;
+            padding: 12px 14px; border-radius: 14px;
+            background: linear-gradient(135deg, rgba(255,255,255,.17), rgba(8,12,20,.46)), rgba(8,12,20,.3);
+            border: 1px solid rgba(255,255,255,.3);
+            color: #fff; font-family: inherit; font-size: .88rem;
+            outline: none; transition: border-color .2s ease, background .2s ease, box-shadow .2s ease;
+        }
+        .subject-panel textarea { resize: vertical; min-height: 58px; line-height: 1.5; }
+        .subject-panel select option { background: #121826; color: #fff; }
+        .subject-panel input:focus,
+        .subject-panel textarea:focus,
+        .subject-panel select:focus {
+            border-color: var(--accent);
+            background: linear-gradient(135deg, rgba(255,255,255,.24), rgba(8,12,20,.5)), rgba(8,12,20,.32);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent);
+        }
+        .subject-panel input::placeholder,
+        .subject-panel textarea::placeholder { color: rgba(255,255,255,.58); }
+
+        .ref-drop {
+            display: flex; flex-direction: column; gap: 4px; align-items: center;
+            padding: 20px 16px; border-radius: 18px; cursor: pointer; text-align: center;
+            border: 1.5px dashed rgba(255,255,255,.42);
+            background: linear-gradient(135deg, rgba(255,255,255,.16), rgba(8,12,20,.42)), rgba(8,12,20,.28);
+            transition: .2s ease;
+        }
+        .ref-drop:hover { border-color: var(--accent); background: linear-gradient(135deg, rgba(255,255,255,.24), rgba(8,12,20,.5)), rgba(8,12,20,.34); }
+        .ref-drop strong { font-size: .88rem; font-weight: 600; }
+        .ref-drop span { font-size: .74rem; color: rgba(255,255,255,.68); }
+        .ref-list { display: flex; flex-direction: column; gap: 6px; margin-top: 9px; }
+        .ref-item {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            padding: 8px 12px; border-radius: 11px; font-size: .78rem;
+            background: rgba(0,0,0,.42); border: 1px solid rgba(255,255,255,.2);
+            color: rgba(255,255,255,.92);
+        }
+        .ref-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ref-remove {
+            border: none; background: rgba(255,255,255,.12); color: #fff;
+            width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
+            line-height: 1; flex: 0 0 auto;
+        }
+
+        .type-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+        .type-chip { cursor: pointer; user-select: none; position: relative; }
+        .type-chip input { position: absolute; opacity: 0; width: 0; height: 0; }
+        .type-chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .type-chip span {
+            display: inline-block; padding: 8px 14px; border-radius: 999px;
+            border: 1px solid rgba(255,255,255,.3);
+            background: linear-gradient(135deg, rgba(255,255,255,.16), rgba(8,12,20,.4)), rgba(8,12,20,.28);
+            font-size: .78rem; font-weight: 500;
+            transition: .2s ease; color: rgba(255,255,255,.94);
+        }
+        .type-chip:hover span { background: linear-gradient(135deg, rgba(255,255,255,.26), rgba(8,12,20,.48)), rgba(8,12,20,.34); }
+        .type-chip input:checked + span {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            border-color: transparent; color: #08111f; font-weight: 700;
+            box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 35%, transparent);
+        }
+
+        .subject-btn {
+            width: 100%; margin-top: 22px; padding: 15px 28px;
+            border: none; border-radius: 999px; cursor: pointer;
+            font-family: 'Fredoka', sans-serif; font-size: 1.03rem; font-weight: 600;
+            color: #08111f; letter-spacing: .02em;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            box-shadow: 0 12px 32px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.55);
+            transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+        }
+        .subject-btn:hover { transform: translateY(-2px); box-shadow: 0 16px 38px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.55); filter: brightness(1.04); }
+        .subject-btn:active { transform: translateY(0); }
+        .subject-btn.small { width: auto; margin-top: 0; padding: 12px 20px; font-size: .85rem; }
+
+        /* ============================================================
+           TEACHER PICKER
+           ============================================================ */
+        .subject-modal {
+            position: fixed; inset: 0; z-index: 5000; display: none;
+            align-items: center; justify-content: center; padding: 24px;
+            background: rgba(4,7,13,.55);
+            backdrop-filter: blur(14px) saturate(140%);
+            -webkit-backdrop-filter: blur(14px) saturate(140%);
+        }
+        .subject-modal.active { display: flex; }
+        #subject-loading { z-index: 6000; }
+        .teacher-modal-inner {
+            width: min(1020px, 100%); max-height: 90vh; overflow-y: auto;
+            border-radius: 30px; padding: 30px; box-sizing: border-box;
+            display: flex; flex-direction: column; align-items: center; text-align: center;
+            animation: modalIn .45s cubic-bezier(.34,1.56,.64,1);
+        }
+        @keyframes modalIn { from { opacity: 0; transform: scale(.94) translateY(16px); } to { opacity: 1; transform: none; } }
+        .teacher-modal-head { margin-bottom: 22px; }
+        .teacher-modal-head h2 {
+            margin: 4px 0 6px; font-family: 'Fredoka', sans-serif;
+            font-size: clamp(1.7rem, 3.4vw, 2.5rem); font-weight: 600;
+        }
+        .teacher-modal-head p:last-child { margin: 0; color: rgba(255,255,255,.82); font-size: .9rem; }
+        .teacher-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 100%; }
+        .teacher-card {
+            display: flex; flex-direction: column; text-align: left; padding: 12px;
+            border-radius: 24px; cursor: pointer; color: inherit;
+            transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+            font-family: inherit;
+        }
+        .teacher-card:hover {
+            transform: translateY(-6px);
+            border-color: rgba(255,255,255,.42);
+            box-shadow: 0 26px 70px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.4);
+        }
+        .teacher-img-wrap {
+            width: 100%; height: 270px; border-radius: 18px; overflow: hidden;
+            background: radial-gradient(circle at 50% 75%, rgba(255,255,255,.13), rgba(0,0,0,.28));
+            position: relative;
+        }
+        .teacher-img-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; }
+        .teacher-card-body { padding: 14px 6px 4px; }
+        .teacher-card-body h3 {
+            margin: 2px 0 5px; font-family: 'Fredoka', sans-serif;
+            font-size: 1.35rem; font-weight: 600;
+        }
+        .teacher-card-body p { margin: 0; font-size: .76rem; line-height: 1.45; color: rgba(255,255,255,.82); }
+        .teacher-card-body .eyebrow { font-size: .58rem; letter-spacing: .1em; }
+
+        /* ============================================================
+           QUIZ
+           ============================================================ */
+        .quiz-topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+        .subject-quiz-panel .q-num { color: var(--accent); font-weight: 700; font-size: .82rem; letter-spacing: .1em; text-transform: uppercase; }
+        .q-type-pill {
+            font-size: .66rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+            padding: 6px 11px; border-radius: 999px;
+            background: linear-gradient(135deg, rgba(255,255,255,.18), rgba(8,12,20,.42)), rgba(8,12,20,.3);
+            border: 1px solid rgba(255,255,255,.28);
+            color: rgba(255,255,255,.9);
+        }
+        .subject-quiz-panel .q-text {
+            font-size: clamp(1.15rem, 2.1vw, 1.6rem); font-weight: 600;
+            line-height: 1.4; margin: 16px 0 24px; color: #fff;
+        }
+        .subject-option {
+            padding: 15px 18px; margin-bottom: 11px; border-radius: 16px;
+            border: 1px solid rgba(255,255,255,.3);
+            background: linear-gradient(135deg, rgba(255,255,255,.18), rgba(8,12,20,.46)), rgba(8,12,20,.34);
+            font-size: .93rem; font-weight: 500; line-height: 1.4;
+            cursor: pointer; color: #fff;
+            transition: background .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
+            display: flex; align-items: center; gap: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.2);
+            animation: subjectOptionIn .35s cubic-bezier(.22,1,.36,1) .08s backwards;
+        }
+        #sub-options-grid .subject-option:nth-child(2) { animation-delay: .14s; }
+        #sub-options-grid .subject-option:nth-child(3) { animation-delay: .20s; }
+        #sub-options-grid .subject-option:nth-child(4) { animation-delay: .26s; }
+        @keyframes subjectOptionIn {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .subject-option:hover {
+            background: linear-gradient(135deg, rgba(255,255,255,.28), rgba(8,12,20,.52)), rgba(8,12,20,.4);
+            border-color: var(--accent);
+            transform: translateX(5px);
+        }
+        .subject-option.correct {
+            background: linear-gradient(135deg, rgba(52,211,153,.42), rgba(6,78,59,.62)), rgba(6,78,59,.42);
+            border-color: #6ee7b7; color: #ecfdf5;
+        }
+        .subject-option.wrong {
+            background: linear-gradient(135deg, rgba(248,113,113,.38), rgba(127,29,29,.58)), rgba(127,29,29,.4);
+            border-color: #fca5a5; color: #fef2f2;
+        }
+        .subject-next-btn {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: #08111f; border-radius: 999px; font-family: 'Fredoka';
+            font-size: .95rem; padding: 14px; border: none; margin-top: 14px;
+            box-shadow: 0 10px 26px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.5);
+        }
+
+        /* ============================================================
+           RESULT
+           ============================================================ */
+        .subject-result-view { align-items: stretch; justify-content: center; }
+        .subject-result-panel { flex: 1.45; max-width: none; margin: 0; }
+        .result-head { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+        .score-orb {
+            width: 132px; height: 132px; border-radius: 50%; flex: 0 0 auto;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.3), rgba(255,255,255,.06));
+            border: 1px solid rgba(255,255,255,.24);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 14px 40px rgba(0,0,0,.3);
+        }
+        .score-orb.unlocked {
+            border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+            box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent), 0 18px 50px rgba(0,0,0,.36), inset 0 1px 0 rgba(255,255,255,.5);
+        }
+        .score-pct { font-family: 'Fredoka', sans-serif; font-size: 2.2rem; font-weight: 600; line-height: 1; color: var(--accent-2); }
+        .score-frac { font-size: .74rem; color: rgba(255,255,255,.55); margin-top: 4px; }
+        .result-message {
+            margin: 20px 0 8px; padding: 16px 18px; border-radius: 16px;
+            font-family: 'Kalam', cursive; font-size: 1.08rem; line-height: 1.45; color: #fff;
+        }
+        .unlock-card {
+            margin: 14px 0 6px; padding: 16px 18px; border-radius: 18px;
+            display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+            border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+        }
+        .unlock-card strong { display: block; font-family: 'Fredoka', sans-serif; font-size: 1.05rem; color: var(--accent-2); }
+        .unlock-card p { margin: 4px 0 0; font-size: .8rem; color: rgba(255,255,255,.62); }
+        .subject-report-list { margin: 18px 0 6px; }
+        .subject-report-item { border-top: 1px solid rgba(255,255,255,.11); padding: 15px 0; }
+        .subject-report-item h3 { margin: 0 0 8px; font-size: .92rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .subject-report-item p { margin: 5px 0; font-size: .84rem; line-height: 1.5; color: rgba(255,255,255,.76); }
+        .subject-report-correct { color: #6ee7b7; }
+        .subject-report-wrong { color: #fca5a5; }
+        .report-type {
+            font-size: .6rem; letter-spacing: .08em; text-transform: uppercase;
+            padding: 3px 8px; border-radius: 999px; background: rgba(255,255,255,.16);
+            color: rgba(255,255,255,.82); font-weight: 600;
+        }
+        .result-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+        .result-actions .subject-btn { width: auto; flex: 1 1 220px; margin-top: 0; }
+
+        /* ============================================================
+           LOADING
+           ============================================================ */
+        .subject-loader-card {
+            width: min(420px, 92vw); border-radius: 26px; padding: 34px 30px;
+            text-align: center; color: #fff;
+        }
+        .subject-loader-card h2 { margin: 18px 0 6px; font-family: 'Fredoka', sans-serif; font-size: 1.35rem; }
+        .subject-loader-card p { margin: 0; font-size: .82rem; color: rgba(255,255,255,.6); line-height: 1.5; }
+        .subject-spinner {
+            width: 46px; height: 46px; margin: 0 auto; border-radius: 50%;
+            border: 2px solid rgba(255,255,255,.14);
+            border-top-color: var(--accent);
+            animation: subjectSpin .9s linear infinite;
+        }
+        @keyframes subjectSpin { to { transform: rotate(360deg); } }
+
+        /* ============================================================
+           90%+ ANIME SCENE
+           ============================================================ */
+        #subject-scene {
+            position: fixed; inset: 0; z-index: 4400;
+            display: flex; align-items: center; justify-content: center;
+            background: #000; visibility: hidden; opacity: 0;
+            transition: opacity .45s ease, visibility .45s ease;
+        }
+        #subject-scene.active { visibility: visible; opacity: 1; }
+        #scene-video {
+            width: 100%; height: 100%; object-fit: contain;
+            background: #000; display: block;
+        }
+        .scene-vignette {
+            position: absolute; inset: 0; pointer-events: none;
+            background:
+                radial-gradient(circle at 50% 45%, rgba(0,0,0,0) 35%, rgba(0,0,0,.32) 75%, rgba(0,0,0,.78) 100%),
+                linear-gradient(180deg, rgba(0,0,0,.42) 0%, rgba(0,0,0,0) 24%, rgba(0,0,0,0) 70%, rgba(0,0,0,.66) 100%);
+        }
+        .scene-top {
+            position: absolute; top: 18px; left: 4vw; right: 4vw; z-index: 2;
+            display: flex; align-items: center; justify-content: space-between; gap: 16px;
+        }
+        .scene-label {
+            padding: 9px 15px; border-radius: 999px;
+            font-size: .7rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+            color: rgba(255,255,255,.9);
+        }
+        .scene-caption {
+            position: absolute; bottom: 9vh; left: 50%; transform: translateX(-50%) translateY(10px);
+            z-index: 2; width: min(680px, 90vw); padding: 16px 22px; border-radius: 20px;
+            font-family: 'Kalam', cursive; font-size: 1.14rem; line-height: 1.4; text-align: center;
+            color: #fff; opacity: 0; transition: opacity .45s ease, transform .45s ease;
+        }
+        .scene-caption.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .scene-sound { position: absolute; right: 4vw; bottom: 20px; z-index: 3; }
+
+        /* ============================================================
+           PRIVATE CHAT (90%+)
+           ============================================================ */
+        #subject-chat {
+            position: fixed; inset: 0; z-index: 4500; display: none;
+            background: radial-gradient(circle at 50% 42%, rgba(10,14,24,.18), rgba(3,5,10,.82));
+            backdrop-filter: blur(46px) saturate(145%);
+            -webkit-backdrop-filter: blur(46px) saturate(145%);
+        }
+        #subject-chat.active { display: flex; }
+        .chat-split {
+            display: flex; width: 100%; height: 100%; gap: 24px;
+            padding: 74px 4vw 24px; box-sizing: border-box; align-items: stretch;
+        }
+        .chat-stage { flex: 1; display: flex; align-items: center; justify-content: center; min-width: 0; }
+        .chat-avatar {
+            max-width: 100%; max-height: 76vh; object-fit: contain;
+            filter: drop-shadow(0 30px 70px rgba(0,0,0,.62));
+            animation: chatFloat 5.5s ease-in-out infinite;
+        }
+        @keyframes chatFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-13px); } }
+        .chat-panel {
+            display: none; flex: 1; max-width: 540px; min-width: 0;
+            border-radius: 26px; overflow: hidden; flex-direction: column;
+        }
+        #subject-chat.conversation .chat-panel {
+            display: flex; animation: chatPanelIn .6s cubic-bezier(.22,1,.36,1);
+        }
+        @keyframes chatPanelIn { from { opacity: 0; transform: translateX(44px) scale(.98); } to { opacity: 1; transform: none; } }
+        .chat-header {
+            padding: 15px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            border-bottom: 1px solid rgba(255,255,255,.11);
+        }
+        .chat-header strong { display: block; font-family: 'Fredoka', sans-serif; font-size: 1.05rem; }
+        .chat-status { font-size: .68rem; color: var(--accent); letter-spacing: .04em; }
+        .chat-messages {
+            flex: 1; overflow-y: auto; padding: 18px;
+            display: flex; flex-direction: column; gap: 11px; min-height: 0;
+        }
+        .chat-messages::-webkit-scrollbar { width: 6px; }
+        .chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); border-radius: 6px; }
+        .chat-msg {
+            max-width: 86%; padding: 11px 14px; border-radius: 16px;
+            font-size: .88rem; line-height: 1.5; word-break: break-word;
+        }
+        .chat-msg.teacher {
+            align-self: flex-start; background: linear-gradient(135deg, rgba(255,255,255,.18), rgba(8,12,20,.44)), rgba(8,12,20,.3);
+            border: 1px solid rgba(255,255,255,.25); border-bottom-left-radius: 6px;
+        }
+        .chat-msg.user {
+            align-self: flex-end; color: #07101d; font-weight: 500;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            border-bottom-right-radius: 6px;
+        }
+        .chat-typing { letter-spacing: .18em; opacity: .65; }
+        .chat-limit-note {
+            align-self: center; max-width: 92%; margin: 4px 0 2px;
+            padding: 10px 14px; border-radius: 14px; text-align: center;
+            border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+            background: color-mix(in srgb, var(--accent) 14%, rgba(8,12,20,.55));
+            color: var(--accent-2); font-size: .76rem; line-height: 1.45; font-weight: 500;
+        }
+        .chat-input-row {
+            display: flex; gap: 8px; padding: 13px; border-top: 1px solid rgba(255,255,255,.11);
+        }
+        .chat-input-row input {
+            flex: 1; min-width: 0; padding: 12px 14px; border-radius: 999px;
+            background: linear-gradient(135deg, rgba(255,255,255,.18), rgba(8,12,20,.46)), rgba(8,12,20,.32);
+            border: 1px solid rgba(255,255,255,.3);
+            color: #fff; font-family: inherit; font-size: .88rem; outline: none;
+        }
+        .chat-input-row input:focus { border-color: var(--accent); }
+        .chat-send {
+            border: none; border-radius: 999px; padding: 0 18px; cursor: pointer;
+            font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: .84rem;
+            color: #07101d; background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        }
+        .chat-input-row input:disabled,
+        .chat-send:disabled {
+            opacity: .55; cursor: not-allowed; filter: grayscale(.35);
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 900px) {
+            #subject-shell { padding: 68px 14px 14px; }
+            .subject-layout { flex-direction: column; overflow-y: auto; }
+            .subject-sprite-area { flex: 0 0 auto; min-height: 30vh; }
+            .subject-sprite { max-height: 30vh; }
+            .subject-bubble { position: relative; top: auto; width: 100%; margin-bottom: 10px; }
+            .subject-panel { flex: 1 0 auto; padding: 22px 20px; }
+            .teacher-grid { grid-template-columns: 1fr; }
+            .teacher-img-wrap { height: 190px; }
+            .teacher-modal-inner { padding: 22px 18px; }
+            .chat-split { flex-direction: column; padding: 66px 14px 14px; gap: 12px; }
+            .chat-stage { flex: 0 0 auto; height: 30vh; }
+            .chat-avatar { max-height: 30vh; }
+            .chat-panel { max-width: none; flex: 1; min-height: 0; }
+            #subject-chat:not(.conversation) .chat-stage { height: 100%; }
+            .field-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 520px) {
+            .toggle-pill { width: 210px; }
+            .mode-btn { font-size: .8rem; padding: 8px 8px; }
+            .subject-panel h1 { font-size: 1.6rem; }
+            .subject-report-item p { font-size: .8rem; }
+            .score-orb { width: 108px; height: 108px; }
+            .score-pct { font-size: 1.8rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading">
+        <div class="star-loader">⭐</div>
+        <h2>Itsuki is browsing the 2026 archives...</h2>
+    </div>
+
+    <div class="desk-container">
+        <!-- Itsuki Side -->
+        <div class="itsuki-sprite-area">
+            <div class="speech-bubble" id="bubble">"Let's see if you've been paying attention!"</div>
+            <img src="" id="itsuki-main" class="sprite-img" alt="">
+        </div>
+
+        <!-- Notebook Side -->
+        <div class="notebook">
+            <!-- Setup Section -->
+            <div id="setup-view" class="setup-card">
+                <h1>Itsuki's Study Room</h1>
+                <p>Welcome to the 2026 Peak GK Lab.</p>
+
+                <label>Topics</label>
+                <textarea id="topics" rows="3" placeholder="E.g. World Cup 2026, Science breakthroughs, Books..."></textarea>
+
+                <div class="date-range">
+                    <div class="date-field">
+                        <label for="start-date">From</label>
+                        <input type="date" id="start-date" required>
+                    </div>
+                    <div class="date-field">
+                        <label for="end-date">To</label>
+                        <input type="date" id="end-date" required>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <select id="q-count">
+                        <option value="5">5 Questions</option>
+                        <option value="10" selected>10 Questions</option>
+                        <option value="20">20 Questions</option>
+                        <option value="30">30 Questions</option>
+                        <option value="40">40 Questions</option>
+                        <option value="50">50 Questions</option>
+                    </select>
+                    <select id="difficulty">
+                        <option>Easy</option>
+                        <option>Advanced Exam Level</option>
+                        <option>Medium</option>
+                    </select>
+                </div>
+
+                <button class="btn-study" onclick="generateTest()">START PRIVATE LESSON</button>
+            </div>
+
+            <!-- Quiz Section -->
+            <div id="quiz-content">
+                <div class="q-num" id="q-prog">Question 01</div>
+                <div class="q-text" id="q-text">Is the question loading?</div>
+                <div id="options-grid"></div>
+                <button class="next-btn" id="next-btn" onclick="goToNext()">NEXT PAGE →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         MODE TOGGLE
+         ============================================================ -->
+    <div id="mode-toggle" aria-label="Study mode selector">
+        <div class="toggle-pill">
+            <div class="mode-indicator" id="mode-indicator"></div>
+            <button class="mode-btn active" id="btn-gk" onclick="setMode('gk')">GK Mode</button>
+            <button class="mode-btn" id="btn-subject" onclick="setMode('subject')">Subjects</button>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         SUBJECT MODE
+         ============================================================ -->
+    <div id="subject-app" data-teacher="alya">
+        <video id="subject-bg" loop muted playsinline preload="none">
+            <source src="study.mp4" type="video/mp4">
+        </video>
+        <div class="subject-vignette"></div>
+
+        <div id="subject-shell">
+            <!-- TEACHER PICKER -->
+            <div id="teacher-modal" class="subject-modal">
+                <div class="teacher-modal-inner glass">
+                    <div class="teacher-modal-head">
+                        <p class="eyebrow">SUBJECT MODE</p>
+                        <h2>Choose your teacher</h2>
+                        <p>Pick the study partner who will build and guide your exam.</p>
+                    </div>
+                    <div class="teacher-grid" id="teacher-grid"></div>
+                </div>
+            </div>
+
+            <!-- SETUP / DASHBOARD -->
+            <div class="subject-view active" id="subject-setup">
+                <div class="subject-layout">
+                    <aside class="subject-sprite-area">
+                        <div class="subject-bubble glass" id="setup-bubble"></div>
+                        <img class="subject-sprite" id="setup-sprite" alt="Selected teacher">
+                    </aside>
+                    <section class="subject-panel glass">
+                        <div class="panel-top">
+                            <div>
+                                <p class="eyebrow" id="setup-eyebrow">SUBJECT MODE</p>
+                                <h1 id="setup-title">Build your subject exam</h1>
+                                <p class="muted" id="setup-subtitle">Tell her what you're studying and she'll set the blueprint.</p>
+                            </div>
+                            <button class="ghost-btn" type="button" onclick="openTeacherModal()">Change teacher</button>
+                        </div>
+
+                        <div class="field-grid">
+                            <div class="field">
+                                <label for="sub-board">Board</label>
+                                <select id="sub-board">
+                                    <option>CBSE</option>
+                                    <option>ICSE</option>
+                                    <option>State Board</option>
+                                    <option>IB</option>
+                                    <option>IGCSE</option>
+                                    <option>University / Competitive</option>
+                                    <option>Other</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label for="sub-grade">Class / Grade</label>
+                                <input id="sub-grade" type="text" placeholder="e.g. Class 10">
+                            </div>
+                            <div class="field full">
+                                <label for="sub-subject">Subject</label>
+                                <input id="sub-subject" type="text" placeholder="e.g. Physics, Biology, History, Economics...">
+                            </div>
+                            <div class="field full">
+                                <label for="sub-syllabus">Syllabus / chapters</label>
+                                <textarea id="sub-syllabus" rows="3" placeholder="e.g. Light – reflection & refraction, human eye, electricity, magnetic effects of current..."></textarea>
+                            </div>
+                            <div class="field full">
+                                <label>Reference material</label>
+                                <label class="ref-drop" for="sub-refs">
+                                    <strong>Add PDFs or images</strong>
+                                    <span>Notes, textbook pages, worksheets, diagrams — up to 6 files.</span>
+                                </label>
+                                <input id="sub-refs" type="file" accept=".pdf,image/*" multiple hidden>
+                                <div class="ref-list" id="ref-list"></div>
+                            </div>
+                            <div class="field full">
+                                <label>Examiner blueprint — question types</label>
+                                <div class="type-grid" id="type-grid">
+                                    <label class="type-chip"><input type="checkbox" value="Competency-Based"><span>Competency-Based</span></label>
+                                    <label class="type-chip"><input type="checkbox" value="Case-Based"><span>Case-Based</span></label>
+                                    <label class="type-chip"><input type="checkbox" value="Assertion-Reason"><span>Assertion-Reason</span></label>
+                                    <label class="type-chip"><input type="checkbox" value="Source-Based"><span>Source-Based</span></label>
+                                    <label class="type-chip"><input type="checkbox" value="Application-Based"><span>Application-Based</span></label>
+                                    <label class="type-chip"><input type="checkbox" value="HOTS / Analytical"><span>HOTS / Analytical</span></label>
+                                    <label class="type-chip"><input type="checkbox" value="Diagram-Based"><span>Diagram-Based</span></label>
+                                    <label class="type-chip"><input type="checkbox" value="Direct Recall"><span>Direct Recall</span></label>
+                                    <label class="type-chip"><input type="checkbox" value="Mixed"><span>Mixed</span></label>
+                                </div>
+                            </div>
+                            <div class="field full">
+                                <label for="sub-instructions">Your own description / instructions</label>
+                                <textarea id="sub-instructions" rows="2" placeholder="e.g. Focus more on numericals, keep case studies from the uploaded notes, avoid tricky wording..."></textarea>
+                            </div>
+                            <div class="field">
+                                <label for="sub-count">Questions</label>
+                                <select id="sub-count">
+                                    <option value="5">5 Questions</option>
+                                    <option value="10" selected>10 Questions</option>
+                                    <option value="20">20 Questions</option>
+                                    <option value="30">30 Questions</option>
+                                    <option value="50">50 Questions</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label for="sub-difficulty">Difficulty</label>
+                                <select id="sub-difficulty">
+                                    <option>Easy</option>
+                                    <option selected>Medium</option>
+                                    <option>Advanced Exam Level</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button class="subject-btn" type="button" onclick="startSubjectTest()">GENERATE EXAM →</button>
+                    </section>
+                </div>
+            </div>
+
+            <!-- SUBJECT QUIZ -->
+            <div class="subject-view" id="subject-quiz">
+                <div class="subject-layout">
+                    <aside class="subject-sprite-area">
+                        <div class="subject-bubble glass" id="quiz-bubble"></div>
+                        <img class="subject-sprite" id="quiz-sprite" alt="Selected teacher">
+                    </aside>
+                    <section class="subject-panel glass subject-quiz-panel">
+                        <div class="quiz-topline">
+                            <div class="q-num" id="sub-q-prog">Question 01</div>
+                            <div class="q-type-pill" id="sub-q-type">Exam Practice</div>
+                        </div>
+                        <div class="q-text" id="sub-q-text">Preparing your question...</div>
+                        <div id="sub-options-grid"></div>
+                        <button class="next-btn subject-next-btn" id="sub-next-btn" type="button" onclick="goToNextSubject()">NEXT →</button>
+                    </section>
+                </div>
+            </div>
+
+            <!-- SUBJECT RESULT -->
+            <div class="subject-view subject-result-view" id="subject-result">
+                <div class="subject-layout">
+                    <aside class="subject-sprite-area">
+                        <img class="subject-sprite" id="result-sprite" alt="Selected teacher">
+                    </aside>
+                    <section class="subject-panel glass subject-result-panel" id="subject-result-content"></section>
+                </div>
+            </div>
+        </div>
+
+        <!-- SUBJECT LOADING -->
+        <div id="subject-loading" class="subject-modal">
+            <div class="glass subject-loader-card">
+                <div class="subject-spinner"></div>
+                <h2 id="subject-loading-title">Preparing your exam...</h2>
+                <p id="subject-loading-text">Reading your references and setting the blueprint.</p>
+            </div>
+        </div>
+
+        <!-- 90%+ ANIME SCENE -->
+        <div id="subject-scene" aria-hidden="true">
+            <video id="scene-video" playsinline preload="auto"></video>
+            <div class="scene-vignette"></div>
+            <div class="scene-top">
+                <span class="scene-label glass-soft" id="scene-label">Private scene</span>
+                <button class="ghost-btn" type="button" onclick="finishSubjectScene()">Skip scene →</button>
+            </div>
+            <div class="scene-caption glass-soft" id="scene-caption"></div>
+            <button class="ghost-btn scene-sound" id="scene-sound" type="button" onclick="toggleSceneMute()">Mute</button>
+        </div>
+
+        <!-- PRIVATE 90%+ CHAT -->
+        <div id="subject-chat">
+            <div class="chat-split">
+                <div class="chat-stage">
+                    <img class="chat-avatar" id="chat-sprite" alt="Selected teacher">
+                </div>
+                <div class="chat-panel glass">
+                    <div class="chat-header">
+                        <div>
+                            <strong id="chat-name">Alya</strong>
+                            <span class="chat-status" id="chat-status">Private lesson · 10 messages left</span>
+                        </div>
+                        <button class="ghost-btn" type="button" onclick="closeSubjectChat()">End talk</button>
+                    </div>
+                    <div class="chat-messages" id="chat-messages"></div>
+                    <div class="chat-input-row">
+                        <input id="chat-input" type="text" placeholder="Ask her anything..." onkeydown="if(event.key==='Enter') sendSubjectChat()">
+                        <button class="chat-send" id="chat-send" type="button" onclick="sendSubjectChat()">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Public Nhost function URL. Replace the two placeholders with your Nhost project values.
+        const NHOST_FUNCTIONS_URL = "https://YOUR_SUBDOMAIN.functions.YOUR_REGION.nhost.run/v1";
+
+        async function callSecureAi(action, payload) {
+            if (NHOST_FUNCTIONS_URL.includes("YOUR_SUBDOMAIN") || NHOST_FUNCTIONS_URL.includes("YOUR_REGION")) {
+                throw new Error("Add your Nhost Functions URL to index.html before starting a test.");
+            }
+
+            const response = await fetch(`${NHOST_FUNCTIONS_URL}/secure-ai`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action, payload })
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || `Request failed (${response.status}).`);
+            return data;
+        }
+
+        let spriteMap = {
+            idle: 'idle-itsuki.png',
+            happy: 'good-itsuki.png',
+            strict: 'strict-itsuki.png'
+        };
+        let quizData = [];
+        let answerRecords = [];
+        let currentIdx = 0;
+        let score = 0;
+        let reportHtml = '';
+
+        async function generateTest() {
+            if(!spriteMap.idle) { alert("Please upload Itsuki images first!"); return; }
+            const topics = document.getElementById('topics').value;
+            const count = document.getElementById('q-count').value;
+            const difficulty = document.getElementById('difficulty').value;
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            const userTimestamp = new Date().toISOString();
+
+            if(!startDate || !endDate || startDate > endDate) {
+                alert("Please choose a valid date range.");
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'flex';
+
+            try {
+                answerRecords = [];
+                currentIdx = 0;
+                score = 0;
+
+                // 1. Tavily Real-time Search
+                const searchResults = await callSecureAi("tavily-search", {
+                    query: `Find reliable sources about ${topics} published from ${startDate} through ${endDate}. Return only facts supported by dated sources within this exact date range.`,
+                    search_depth: "advanced"
+                });
+                if(!Array.isArray(searchResults.results)) {
+                    throw new Error("Search returned no usable results.");
+                }
+                const sourceUrls = new Set(searchResults.results.map(result => result.url).filter(Boolean));
+
+                // 2. OpenRouter AI Generation
+                const prompt = `The user's browser timestamp is ${userTimestamp}. Use it only to understand what "recent" means; it is not a restriction on the requested period.
+                The user's requested topics are: ${topics}.
+                The exact requested publication date range is ${startDate} through ${endDate}, inclusive.
+                Use only the supplied search results as evidence: ${JSON.stringify(searchResults.results)}.
+                Generate ${difficulty} GK MCQs that directly match the requested topics and exact date range.
+                Accuracy rules: verify every question and its correct answer against a dated source in the search results; never invent, guess, extrapolate, or fill gaps with general knowledge.
+                Do not use facts published before ${startDate} or after ${endDate}. If a fact's date or accuracy cannot be verified, discard it and use another supported fact.
+                Make all four options plausible but ensure exactly one is supported as correct by the sources. Keep explanations factual and concise.
+                Every object must include the exact matching source URL from the search results in "s" and its publication date in "d".
+                Return strictly JSON: [{"q":"...","o":["...","...","...","..."],"a":0,"e":"...","s":"source URL","d":"publication date"}]`;
+
+                quizData = [];
+                const requestedCount = Number(count);
+                const batchSize = 10;
+
+                for(let batchStart = 0; batchStart < requestedCount; batchStart += batchSize) {
+                    const batchCount = Math.min(batchSize, requestedCount - batchStart);
+                    let batchQuestions = [];
+                    const seenQuestions = new Set(quizData.map(question => question.q.toLowerCase().trim()));
+
+                    for(let attempt = 1; attempt <= 3; attempt++) {
+                        const aiData = await callSecureAi("openrouter-chat", {
+                            model: "openai/gpt-4o-mini",
+                            temperature: 0,
+                            max_tokens: batchCount * 700 + 1000,
+                            messages: [
+                                { role: "system", content: "You are a strict fact-checking quiz generator. Follow the user's requested topic and time period exactly. Never fabricate facts or dates." },
+                                { role: "user", content: `${prompt}
+                                Do not repeat or paraphrase any previous question: ${JSON.stringify(Array.from(seenQuestions))}.
+                                Generate exactly ${batchCount} complete question objects for batch ${Math.floor(batchStart / batchSize) + 1}. This is attempt ${attempt}. Returning fewer or more is invalid.` }
+                            ]
+                        });
+                        const match = aiData.choices?.[0]?.message?.content?.match(/\[.*\]/s);
+                        if(!match) continue;
+                        try {
+                            batchQuestions = JSON.parse(match[0]);
+                        } catch (parseError) {
+                            batchQuestions = [];
+                        }
+                        if(validateQuestionSet(batchQuestions, batchCount, seenQuestions, sourceUrls)) break;
+                        batchQuestions = [];
+                    }
+
+                    if(batchQuestions.length !== batchCount) {
+                        throw new Error(`The AI returned an invalid batch ${Math.floor(batchStart / batchSize) + 1}. Try again with narrower topics or dates.`);
+                    }
+                    quizData.push(...batchQuestions);
+                }
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('setup-view').style.display = 'none';
+                document.getElementById('quiz-content').style.display = 'block';
+                loadQuestion();
+
+            } catch (e) {
+                alert(`Itsuki is frustrated! ${e.message || "Connection error."}`);
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function loadQuestion() {
+            const q = quizData[currentIdx];
+            document.getElementById('q-prog').innerText = `Page ${currentIdx + 1} of ${quizData.length}`;
+            document.getElementById('q-text').innerText = q.q;
+            document.getElementById('itsuki-main').src = spriteMap.idle;
+            document.getElementById('bubble').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'none';
+
+            const grid = document.getElementById('options-grid');
+            grid.innerHTML = '';
+            
+            q.o.forEach((opt, i) => {
+                const d = document.createElement('div');
+                d.className = 'option';
+                d.innerText = opt;
+                d.onclick = () => check(i, d);
+                grid.appendChild(d);
+            });
+
+            gsap.from(".notebook", { x: 50, opacity: 0, duration: 0.6, ease: "back.out" });
+        }
+
+        function check(idx, el) {
+            const correct = quizData[currentIdx].a;
+            const all = document.querySelectorAll('.option');
+            all.forEach(o => o.style.pointerEvents = 'none');
+
+            const bubble = document.getElementById('bubble');
+            const sprite = document.getElementById('itsuki-main');
+
+            if(idx === correct) {
+                el.classList.add('correct');
+                sprite.src = spriteMap.happy;
+                bubble.innerText = "Excellent! You've clearly been studying hard.";
+                score++;
+            } else {
+                el.classList.add('wrong');
+                all[correct].classList.add('correct');
+                sprite.src = spriteMap.strict;
+                bubble.innerHTML = `<strong>Pay Attention!</strong><br>${escapeHtml(quizData[currentIdx].e)}`;
+            }
+
+            answerRecords[currentIdx] = {
+                selected: idx,
+                correct: correct,
+                isCorrect: idx === correct
+            };
+
+            bubble.style.display = 'block';
+            gsap.from(bubble, { scale: 0, duration: 0.4, ease: "back.out" });
+            document.getElementById('next-btn').style.display = 'block';
+        }
+
+        function goToNext() {
+            currentIdx++;
+            if(currentIdx < quizData.length) loadQuestion();
+            else finish();
+        }
+
+        function finish() {
+            reportHtml = quizData.map((question, index) => {
+                const record = answerRecords[index];
+                const statusClass = record.isCorrect ? 'report-correct' : 'report-wrong';
+                const status = record.isCorrect ? 'Correct' : 'Needs Review';
+                return `
+                    <div class="report-item">
+                        <h3 class="${statusClass}">Question ${index + 1}: ${status}</h3>
+                        <p><strong>${escapeHtml(question.q)}</strong></p>
+                        <p>Your answer: ${escapeHtml(question.o[record.selected])}</p>
+                        <p>Correct answer: ${escapeHtml(question.o[record.correct])}</p>
+                        <p>Explanation: ${escapeHtml(question.e)}</p>
+                        <p>Source: ${escapeHtml(question.s)} (${escapeHtml(question.d)})</p>
+                    </div>`;
+            }).join('');
+
+            document.getElementById('quiz-content').innerHTML = `
+                <div style="text-align:center">
+                    <h1 style="font-family:Kalam; font-size:3rem">Final Grade</h1>
+                    <div style="font-size:4rem; color:var(--itsuki-red); font-weight:bold">${score}/${quizData.length}</div>
+                    <p style="font-size:1.2rem">${score === quizData.length ? "You're a genius! Let's go get meat buns." : "We're staying here until you get them all right!"}</p>
+                    <div class="report-list">${reportHtml}</div>
+                    <button class="btn-study" onclick="location.reload()">RE-ENROLL</button>
+                </div>
+            `;
+        }
+
+        function validateQuestionSet(questions, expectedCount, seenQuestions, sourceUrls) {
+            if(!Array.isArray(questions) || questions.length !== expectedCount) return false;
+            const batchQuestions = new Set();
+
+            return questions.every(question => {
+                if(!question || typeof question.q !== 'string' || !question.q.trim()) return false;
+                if(!Array.isArray(question.o) || question.o.length !== 4) return false;
+                if(new Set(question.o.map(option => String(option).trim().toLowerCase())).size !== 4) return false;
+                if(question.o.some(option => typeof option !== 'string' || !option.trim())) return false;
+                if(!Number.isInteger(question.a) || question.a < 0 || question.a > 3) return false;
+                if(typeof question.e !== 'string' || !question.e.trim()) return false;
+                if(typeof question.s !== 'string' || !sourceUrls.has(question.s)) return false;
+                if(typeof question.d !== 'string' || !question.d.trim()) return false;
+
+                const normalizedQuestion = question.q.trim().toLowerCase();
+                if(seenQuestions.has(normalizedQuestion) || batchQuestions.has(normalizedQuestion)) return false;
+                batchQuestions.add(normalizedQuestion);
+                return true;
+            });
+        }
+
+        function escapeHtml(value) {
+            const div = document.createElement('div');
+            div.innerText = value;
+            return div.innerHTML;
+        }
+    </script>
+
+    <script>
+        // ============================================================
+        // SUBJECT MODE
+        // ============================================================
+        const SUBJECT_MODEL = "openai/gpt-4o-mini";
+        const SUBJECT_CHAT_LIMIT = 10;
+
+        const TEACHERS = {
+            alya: {
+                key: "alya",
+                name: "Alya",
+                fullName: "Alisa Mikhailovna Kujou",
+                series: "Alya Sometimes Hides Her Feelings in Russian",
+                tagline: "Sharp, composed, and secretly rooting for you.",
+                color: "#8ab4ff",
+                persona: "Alya (Alisa Mikhailovna Kujou) from Roshidere. She is confident, intelligent, sharp-tongued, competitive, and secretly caring. She occasionally slips into Russian when flustered. She pushes the student to do better but softens when they succeed.",
+                images: {
+                    idle: ["alya-idle.png", "alya.png", "alisa-idle.png"],
+                    happy: ["alya-good.png", "alya-happy.png", "alya.png"],
+                    strict: ["alya-strict.png", "alya-angry.png", "alya.png"]
+                },
+                lines: {
+                    welcome: "Good, you're here. Tell me the subject and show me your notes — I'll build an exam that actually tests you.",
+                    ok: "Hmph, correct. Don't let it go to your head.",
+                    no: "Not quite. Read the explanation — I'm not repeating myself.",
+                    resultHigh: "Impressive. You actually made me work for that score. Come here — I'll answer whatever you're still unsure about.",
+                    resultLow: "We're not done yet. Read the analysis, then we'll rebuild the weak areas.",
+                    chatOpen: "You scored {score} ({pct}%). Not bad. Ask me anything — no one else is listening."
+                }
+            },
+            hori: {
+                key: "hori",
+                name: "Hori",
+                fullName: "Kyouko Hori",
+                series: "Horimiya",
+                tagline: "Warm, playful, and impossible to slack off around.",
+                color: "#ff9e7a",
+                persona: "Kyouko Hori from Horimiya. At home she is responsible, hardworking, playful, and a little teasing. She cares deeply about the people she tutors and balances warmth with gentle scolding.",
+                images: {
+                    idle: ["hori-idle.png", "kyoko-idle.png", "hori.png"],
+                    happy: ["hori-good.png", "hori-happy.png", "hori.png"],
+                    strict: ["hori-strict.png", "hori-angry.png", "hori.png"]
+                },
+                lines: {
+                    welcome: "Hey! Let's set this up properly. Tell me what you're studying and I'll make it feel doable.",
+                    ok: "Yes! See? You're better at this than you think.",
+                    no: "Almost. Don't stress — read the explanation and we'll fix it.",
+                    resultHigh: "Look at you! I'm really proud. Come sit with me — ask me anything you want.",
+                    resultLow: "You're okay. We'll take the weak bits one at a time. Let's rebuild it.",
+                    chatOpen: "You got {score} — {pct}%! I'm honestly proud of you. What do you want to ask me?"
+                }
+            },
+            anna: {
+                key: "anna",
+                name: "Yamada Anna",
+                fullName: "Anna Yamada",
+                series: "The Dangers in My Heart",
+                tagline: "Sweet, food-loving, and quietly encouraging.",
+                color: "#ff9ec4",
+                persona: "Anna Yamada from The Dangers in My Heart. She is a tall, gentle, food-loving model who is kind, a little airheaded, and quietly encouraging. She gets happy about snacks and speaks warmly.",
+                images: {
+                    idle: ["anna-idle.png", "yamada-anna-idle.png", "yamada-idle.png", "anna.png"],
+                    happy: ["anna-good.png", "anna-happy.png", "yamada-anna-good.png", "anna.png"],
+                    strict: ["anna-strict.png", "anna-sad.png", "yamada-anna-strict.png", "anna.png"]
+                },
+                lines: {
+                    welcome: "Yay, study time! Give me your subject and notes — we'll make a test that helps you grow.",
+                    ok: "Yay! That's right. I knew you could do it.",
+                    no: "Aww, not that one. It's okay — the explanation will help.",
+                    resultHigh: "Wow, {pct}%! You did amazing. Come here — you can ask me anything at all.",
+                    resultLow: "You did your best, and that matters. Let's look at the analysis together, okay?",
+                    chatOpen: "You got {score} — {pct}%! I'm so happy. What's on your mind? Ask me anything."
+                }
+            }
+        };
+
+        let subjectTeacherKey = null;
+        let subjectCurrentView = "setup";
+        let subjectQuizData = [];
+        let subjectAnswerRecords = [];
+        let subjectIdx = 0;
+        let subjectScore = 0;
+        let subjectRefFiles = [];
+        let subjectSecretTimer = null;
+        let subjectSceneTimer = null;
+        let subjectScenePlayed = false;
+        let subjectChatHistory = [];
+        let subjectChatBusy = false;
+        let subjectChatUserCount = 0;
+        let subjectContext = { subject: "", board: "", grade: "", score: 0, total: 0, pct: 0, weakAreas: [] };
+
+        function setMode(mode) {
+            const isSubject = mode === "subject";
+            document.body.classList.toggle("mode-subject", isSubject);
+            document.body.classList.toggle("mode-gk", !isSubject);
+            document.getElementById("btn-gk").classList.toggle("active", !isSubject);
+            document.getElementById("btn-subject").classList.toggle("active", isSubject);
+            positionModeIndicator();
+
+            const video = document.getElementById("subject-bg");
+            if (isSubject) {
+                if (video) video.play().catch(() => {});
+                if (subjectTeacherKey && TEACHERS[subjectTeacherKey]) {
+                    applyTeacher(subjectTeacherKey, false);
+                    if (!document.querySelector(".subject-view.active")) showSubjectView("setup");
+                    if (document.getElementById("subject-chat").classList.contains("active")) {
+                        document.body.classList.add("chat-open");
+                    }
+                } else {
+                    showSubjectView("setup");
+                    openTeacherModal();
+                }
+            } else {
+                if (video) video.pause();
+                clearTimeout(subjectSecretTimer);
+                hideSubjectScene();
+                document.body.classList.remove("chat-open");
+            }
+        }
+
+        function positionModeIndicator() {
+            const active = document.querySelector(".mode-btn.active");
+            const indicator = document.getElementById("mode-indicator");
+            if (!active || !indicator) return;
+            const pill = active.parentElement;
+            const pillRect = pill.getBoundingClientRect();
+            const rect = active.getBoundingClientRect();
+            indicator.style.width = rect.width + "px";
+            indicator.style.transform = `translateX(${rect.left - pillRect.left - pill.clientLeft}px)`;
+        }
+
+        function buildTeacherCards() {
+            const grid = document.getElementById("teacher-grid");
+            grid.innerHTML = Object.values(TEACHERS).map(t => `
+                <button class="teacher-card glass" type="button" onclick="chooseTeacher('${t.key}')">
+                    <div class="teacher-img-wrap">
+                        <img data-teacher-img="${t.key}" alt="${t.name}">
+                    </div>
+                    <div class="teacher-card-body">
+                        <p class="eyebrow">${escapeSubjectHtml(t.series)}</p>
+                        <h3>${escapeSubjectHtml(t.name)}</h3>
+                        <p>${escapeSubjectHtml(t.tagline)}</p>
+                    </div>
+                </button>
+            `).join("");
+            Object.values(TEACHERS).forEach(t => {
+                const img = grid.querySelector(`[data-teacher-img="${t.key}"]`);
+                if (img) resolveSprite(t.key, "idle", img);
+            });
+        }
+
+        function fallbackAvatar(key, mood) {
+            const t = TEACHERS[key];
+            const initial = t.name.charAt(0);
+            const color = t.color || "#8ab4ff";
+            const hint = (t.images[mood] && t.images[mood][0]) || `${key}-${mood}.png`;
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900">
+                <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="${color}" stop-opacity="0.4"/>
+                    <stop offset="1" stop-color="#0a0f18" stop-opacity="0.95"/>
+                </linearGradient></defs>
+                <rect width="600" height="900" fill="url(#g)"/>
+                <circle cx="300" cy="330" r="150" fill="${color}" opacity="0.22"/>
+                <text x="300" y="385" font-size="170" font-family="Arial" font-weight="bold" text-anchor="middle" fill="#ffffff" opacity="0.88">${initial}</text>
+                <text x="300" y="480" font-size="36" font-family="Arial" text-anchor="middle" fill="#ffffff" opacity="0.72">${t.name}</text>
+                <text x="300" y="820" font-size="20" font-family="Arial" text-anchor="middle" fill="#ffffff" opacity="0.45">add ${hint}</text>
+            </svg>`;
+            return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+        }
+
+        function resolveSprite(key, mood, img) {
+            if (!img) return;
+            const baseList = ((TEACHERS[key] && TEACHERS[key].images && TEACHERS[key].images[mood]) || []).slice();
+            const list = [];
+            baseList.forEach(name => {
+                [name, name.replace(/\.png$/i, ".jpg"), name.replace(/\.png$/i, ".jpeg"), name.replace(/\.png$/i, ".webp")].forEach(candidate => {
+                    if (!list.includes(candidate)) list.push(candidate);
+                });
+            });
+            if (!list.length) {
+                img.onerror = null;
+                img.src = fallbackAvatar(key, mood);
+                return;
+            }
+            let index = 0;
+            img.onerror = function () {
+                index++;
+                if (index < list.length) {
+                    img.src = list[index];
+                } else {
+                    img.onerror = null;
+                    img.src = fallbackAvatar(key, mood);
+                }
+            };
+            img.src = list[0];
+        }
+
+        function openTeacherModal() {
+            if (!document.body.classList.contains("mode-subject")) setMode("subject");
+            document.getElementById("teacher-modal").classList.add("active");
+        }
+
+        function chooseTeacher(key) {
+            if (!TEACHERS[key]) return;
+            if (subjectCurrentView === "quiz" && subjectQuizData.length) {
+                if (!confirm("Switching teachers will end the current exam. Continue?")) return;
+            }
+            resetSubjectRun();
+            subjectTeacherKey = key;
+            document.getElementById("teacher-modal").classList.remove("active");
+            applyTeacher(key, true);
+        }
+
+        function applyTeacher(key, changeView) {
+            const t = TEACHERS[key];
+            if (!t) return;
+            subjectTeacherKey = key;
+            document.getElementById("subject-app").dataset.teacher = key;
+            document.getElementById("setup-eyebrow").textContent = `${t.name.toUpperCase()} · SUBJECT MODE`;
+            document.getElementById("setup-title").textContent = `${t.name}'s subject studio`;
+            document.getElementById("setup-subtitle").textContent = t.tagline;
+            const bubble = document.getElementById("setup-bubble");
+            bubble.textContent = t.lines.welcome;
+            bubble.style.display = "block";
+            resolveSprite(key, "idle", document.getElementById("setup-sprite"));
+            resolveSprite(key, "idle", document.getElementById("quiz-sprite"));
+            resolveSprite(key, "idle", document.getElementById("result-sprite"));
+            resolveSprite(key, "idle", document.getElementById("chat-sprite"));
+            if (changeView) showSubjectView("setup");
+        }
+
+        function showSubjectView(view) {
+            subjectCurrentView = view;
+            ["setup", "quiz", "result"].forEach(name => {
+                document.getElementById("subject-" + name).classList.toggle("active", name === view);
+            });
+        }
+
+        function resetSubjectRun() {
+            clearTimeout(subjectSecretTimer);
+            hideSubjectScene();
+            subjectQuizData = [];
+            subjectAnswerRecords = [];
+            subjectIdx = 0;
+            subjectScore = 0;
+            subjectScenePlayed = false;
+            subjectChatHistory = [];
+            subjectChatBusy = false;
+            subjectChatUserCount = 0;
+            updateSubjectChatLimitUI();
+            document.getElementById("subject-app").classList.remove("testing");
+            document.getElementById("subject-chat").classList.remove("active", "conversation");
+            document.getElementById("chat-sprite").style.opacity = "1";
+            document.body.classList.remove("chat-open");
+        }
+
+        function finishtest() {
+            const subjectTestActive = subjectCurrentView === "quiz" && subjectQuizData.length > 0;
+            const gkTestActive = quizData.length > 0 && currentIdx < quizData.length
+                && document.querySelectorAll("#options-grid .option").length > 0;
+
+            if (subjectTestActive) {
+                subjectQuizData.forEach((q, index) => {
+                    if (!subjectAnswerRecords[index] || !subjectAnswerRecords[index].isCorrect) {
+                        subjectAnswerRecords[index] = { selected: q.a, correct: q.a, isCorrect: true };
+                    }
+                });
+                subjectScore = subjectQuizData.length;
+                subjectIdx = subjectQuizData.length - 1;
+                finishSubject();
+                console.log(`finishtest(): subject test completed at 100% (${subjectScore}/${subjectQuizData.length}).`);
+                return "Subject test completed at 100%.";
+            }
+
+            if (!gkTestActive) {
+                console.warn("finishtest(): start a test first.");
+                return "No active test.";
+            }
+            quizData.forEach((q, index) => {
+                if (!answerRecords[index] || !answerRecords[index].isCorrect) {
+                    answerRecords[index] = { selected: q.a, correct: q.a, isCorrect: true };
+                }
+            });
+            score = quizData.length;
+            currentIdx = quizData.length - 1;
+            finish();
+            console.log(`finishtest(): GK test completed at 100% (${score}/${quizData.length}).`);
+            return "GK test completed at 100%.";
+        }
+
+        function handleSubjectRefs(event) {
+            const files = Array.from(event.target.files || []);
+            for (const file of files) {
+                if (subjectRefFiles.length >= 6) {
+                    alert("You can add up to 6 reference files.");
+                    break;
+                }
+                const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+                const isImage = file.type.startsWith("image/");
+                if (!isPdf && !isImage) continue;
+                subjectRefFiles.push({ file, name: file.name, type: file.type, text: "", dataUrl: "" });
+            }
+            event.target.value = "";
+            renderSubjectRefList();
+        }
+
+        function renderSubjectRefList() {
+            const list = document.getElementById("ref-list");
+            list.innerHTML = subjectRefFiles.map((ref, index) => `
+                <div class="ref-item">
+                    <span>${escapeSubjectHtml(ref.name)}</span>
+                    <button class="ref-remove" type="button" title="Remove" onclick="removeSubjectRef(${index})">×</button>
+                </div>
+            `).join("");
+        }
+
+        function removeSubjectRef(index) {
+            subjectRefFiles.splice(index, 1);
+            renderSubjectRefList();
+        }
+
+        async function extractSubjectPdfText(file) {
+            if (typeof pdfjsLib === "undefined") return "";
+            try {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+                const data = new Uint8Array(await file.arrayBuffer());
+                const pdf = await pdfjsLib.getDocument({ data }).promise;
+                const pageLimit = Math.min(pdf.numPages, 20);
+                const chunks = [];
+                for (let p = 1; p <= pageLimit; p++) {
+                    const page = await pdf.getPage(p);
+                    const content = await page.getTextContent();
+                    const pageText = content.items.map(item => item.str).join(" ").replace(/\s+/g, " ").trim();
+                    if (pageText) chunks.push(pageText);
+                }
+                return chunks.join("\n\n").slice(0, 22000);
+            } catch (e) {
+                console.warn("Subject PDF extraction failed:", e);
+                return "";
+            }
+        }
+
+        function subjectImageToDataUrl(file) {
+            return new Promise(resolve => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const max = 1200;
+                        const scale = Math.min(1, max / Math.max(img.width, img.height));
+                        const canvas = document.createElement("canvas");
+                        canvas.width = Math.max(1, Math.round(img.width * scale));
+                        canvas.height = Math.max(1, Math.round(img.height * scale));
+                        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+                        resolve(canvas.toDataURL("image/jpeg", 0.82));
+                    };
+                    img.onerror = () => resolve(typeof reader.result === "string" ? reader.result : "");
+                    img.src = reader.result;
+                };
+                reader.onerror = () => resolve("");
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function subjectPdfToImages(file, maxPages) {
+            if (typeof pdfjsLib === "undefined") return [];
+            try {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+                const data = new Uint8Array(await file.arrayBuffer());
+                const pdf = await pdfjsLib.getDocument({ data }).promise;
+                const pageLimit = Math.min(pdf.numPages, maxPages || 2);
+                const rendered = [];
+                for (let p = 1; p <= pageLimit; p++) {
+                    const page = await pdf.getPage(p);
+                    const viewport = page.getViewport({ scale: 1.4 });
+                    const canvas = document.createElement("canvas");
+                    canvas.width = Math.round(viewport.width);
+                    canvas.height = Math.round(viewport.height);
+                    await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+                    rendered.push(canvas.toDataURL("image/jpeg", 0.8));
+                }
+                return rendered;
+            } catch (e) {
+                console.warn("Subject PDF render failed:", e);
+                return [];
+            }
+        }
+
+        async function processSubjectRefs() {
+            const textParts = [];
+            const images = [];
+            for (const ref of subjectRefFiles) {
+                if (ref.type === "application/pdf" || /\.pdf$/i.test(ref.name)) {
+                    if (!ref.text) ref.text = await extractSubjectPdfText(ref.file);
+                    if (ref.text && ref.text.length > 80) {
+                        textParts.push(`--- ${ref.name} ---\n${ref.text}`);
+                    } else {
+                        const pageImages = await subjectPdfToImages(ref.file, 2);
+                        pageImages.forEach((dataUrl, index) => {
+                            images.push({ name: `${ref.name} page ${index + 1}`, dataUrl });
+                        });
+                    }
+                } else if (ref.type.startsWith("image/")) {
+                    if (!ref.dataUrl) ref.dataUrl = await subjectImageToDataUrl(ref.file);
+                    if (ref.dataUrl) images.push({ name: ref.name, dataUrl: ref.dataUrl });
+                }
+            }
+            return {
+                text: textParts.join("\n\n").slice(0, 22000),
+                images: images.slice(0, 3)
+            };
+        }
+
+        function getSelectedQuestionTypes() {
+            const types = Array.from(document.querySelectorAll("#type-grid input:checked")).map(input => input.value);
+            return types.length ? types : ["Mixed"];
+        }
+
+        function defaultTeacherLine(correct) {
+            const t = TEACHERS[subjectTeacherKey];
+            if (!t) return correct ? "Correct." : "Not quite.";
+            return correct ? t.lines.ok : t.lines.no;
+        }
+
+        function showSubjectLoading(title, text) {
+            document.getElementById("subject-loading-title").textContent = title;
+            document.getElementById("subject-loading-text").textContent = text;
+            document.getElementById("subject-loading").classList.add("active");
+        }
+
+        function hideSubjectLoading() {
+            document.getElementById("subject-loading").classList.remove("active");
+        }
+
+        async function subjectOpenRouter(body) {
+            const data = await callSecureAi("openrouter-chat", body);
+            return data.choices?.[0]?.message?.content || "";
+        }
+
+        function buildSubjectExamPrompt({ board, grade, subject, syllabus, instructions, types, count, difficulty, refs }) {
+            const t = TEACHERS[subjectTeacherKey];
+            return `You are ${t.name} (${t.fullName}) from ${t.series}, acting as the student's private exam setter and tutor.
+Persona: ${t.persona}
+
+TASK: Create ${count} ${difficulty} multiple-choice exam questions for ${subject}${grade ? ` (class ${grade})` : ""}, following the ${board} board style.
+Syllabus / chapters: ${syllabus || "(use the reference material)"}
+Examiner blueprint — include this mix of question types: ${types.join(", ")}.
+Custom instructions from the student: ${instructions || "(none)"}
+Reference material from the student's own notes:
+${refs.text || "(no extractable text; rely on the uploaded images and board-level knowledge)"}
+
+Rules:
+- Match the board, grade level, and the student's reference material.
+- Each question must clearly belong to one of the selected types. Put that label in "t".
+- Case-based/source-based questions must include the case or source in the question text.
+- Exactly one option is correct. Provide four plausible options. Keep language age-appropriate.
+- Explanation "e" must be concise, factual, and teach the concept.
+- Generate two short in-character lines for ${t.name}: "ok" for a correct answer and "no" for a wrong answer. They must feel like ${t.name} is reacting directly to this student, reference the question or answer when natural, vary between questions, stay fully in character, and never mention being an AI. Keep each under 30 words.
+Return ONLY a JSON array with no markdown:
+[{"q":"...","o":["...","...","...","..."],"a":0,"e":"...","t":"Case-Based","ok":"...","no":"..."}]`;
+        }
+
+        function validateSubjectBatch(batch, expectedCount, seenQuestions) {
+            if (!Array.isArray(batch) || batch.length !== expectedCount) return false;
+            const local = new Set();
+            return batch.every(q => {
+                if (!q || typeof q.q !== "string" || !q.q.trim()) return false;
+                if (!Array.isArray(q.o) || q.o.length !== 4) return false;
+                if (q.o.some(o => typeof o !== "string" || !o.trim())) return false;
+                if (new Set(q.o.map(o => String(o).trim().toLowerCase())).size !== 4) return false;
+                if (!Number.isInteger(q.a) || q.a < 0 || q.a > 3) return false;
+                if (typeof q.e !== "string" || !q.e.trim()) return false;
+                const normalized = q.q.trim().toLowerCase();
+                if (seenQuestions.has(normalized) || local.has(normalized)) return false;
+                local.add(normalized);
+                return true;
+            });
+        }
+
+        async function generateSubjectQuestions(config) {
+            const basePrompt = buildSubjectExamPrompt(config);
+            const requestedCount = Number(config.count);
+            const batchSize = 10;
+            const allQuestions = [];
+            const seenQuestions = new Set();
+
+            for (let start = 0; start < requestedCount; start += batchSize) {
+                const batchCount = Math.min(batchSize, requestedCount - start);
+                const batchNumber = Math.floor(start / batchSize) + 1;
+                let batch = [];
+
+                for (let attempt = 1; attempt <= 3; attempt++) {
+                    const prompt = `${basePrompt}
+
+Generate exactly ${batchCount} complete question objects for batch ${batchNumber} (attempt ${attempt}).
+Do not repeat or paraphrase any of these already-used questions: ${JSON.stringify(Array.from(seenQuestions))}.`;
+
+                    const userContent = [{ type: "text", text: prompt }];
+                    config.refs.images.forEach(img => {
+                        userContent.push({ type: "image_url", image_url: { url: img.dataUrl } });
+                    });
+
+                    let raw = "";
+                    try {
+                        raw = await subjectOpenRouter({
+                            model: SUBJECT_MODEL,
+                            temperature: 0.7,
+                            max_tokens: batchCount * 900 + 900,
+                            messages: [
+                                { role: "system", content: `You are ${TEACHERS[subjectTeacherKey].name}, a strict but caring exam setter. Follow the student's blueprint exactly. Return only valid JSON.` },
+                                { role: "user", content: userContent }
+                            ]
+                        });
+                    } catch (e) {
+                        if (attempt === 3) throw e;
+                        continue;
+                    }
+
+                    const match = raw.match(/\[[\s\S]*\]/);
+                    if (!match) {
+                        if (attempt === 3) throw new Error("The AI did not return a question array.");
+                        continue;
+                    }
+
+                    try {
+                        batch = JSON.parse(match[0]);
+                    } catch (e) {
+                        batch = [];
+                    }
+
+                    if (validateSubjectBatch(batch, batchCount, seenQuestions)) break;
+                    batch = [];
+                }
+
+                if (batch.length !== batchCount) {
+                    throw new Error("The AI returned an invalid batch. Try fewer questions or simpler reference files.");
+                }
+
+                batch.forEach(q => {
+                    q.t = typeof q.t === "string" && q.t.trim() ? q.t.trim() : "Exam Practice";
+                    q.ok = typeof q.ok === "string" && q.ok.trim() ? q.ok.trim() : defaultTeacherLine(true);
+                    q.no = typeof q.no === "string" && q.no.trim() ? q.no.trim() : defaultTeacherLine(false);
+                    seenQuestions.add(q.q.trim().toLowerCase());
+                });
+
+                allQuestions.push(...batch);
+            }
+
+            return allQuestions;
+        }
+
+        async function startSubjectTest() {
+            if (!subjectTeacherKey) {
+                openTeacherModal();
+                return;
+            }
+
+            const board = document.getElementById("sub-board").value;
+            const grade = document.getElementById("sub-grade").value.trim();
+            const subject = document.getElementById("sub-subject").value.trim();
+            const syllabus = document.getElementById("sub-syllabus").value.trim();
+            const instructions = document.getElementById("sub-instructions").value.trim();
+            const count = Number(document.getElementById("sub-count").value);
+            const difficulty = document.getElementById("sub-difficulty").value;
+            const types = getSelectedQuestionTypes();
+
+            if (!subject) {
+                alert("Please enter the subject.");
+                return;
+            }
+            if (!syllabus && subjectRefFiles.length === 0) {
+                alert("Add a syllabus or at least one reference file so the AI knows what to test.");
+                return;
+            }
+
+            clearTimeout(subjectSecretTimer);
+            showSubjectLoading(`Preparing your ${subject} exam...`, "Reading your references and setting the examiner blueprint.");
+
+            try {
+                const refs = await processSubjectRefs();
+                document.getElementById("subject-loading-text").textContent = "Building questions, explanations, and in-character reactions...";
+
+                const questions = await generateSubjectQuestions({
+                    board, grade, subject, syllabus, instructions, types, count, difficulty, refs
+                });
+
+                subjectQuizData = questions;
+                subjectAnswerRecords = [];
+                subjectIdx = 0;
+                subjectScore = 0;
+                subjectScenePlayed = false;
+                subjectChatHistory = [];
+                subjectChatBusy = false;
+                subjectChatUserCount = 0;
+                hideSubjectScene();
+                updateSubjectChatLimitUI();
+                subjectContext = { subject, board, grade, score: 0, total: count, pct: 0, weakAreas: [] };
+
+                hideSubjectLoading();
+                document.getElementById("subject-app").classList.add("testing");
+                showSubjectView("quiz");
+                resolveSprite(subjectTeacherKey, "idle", document.getElementById("quiz-sprite"));
+                loadSubjectQuestion();
+            } catch (e) {
+                hideSubjectLoading();
+                alert(`${TEACHERS[subjectTeacherKey].name} couldn't build the exam: ${e.message || "Connection error."}`);
+            }
+        }
+
+        function loadSubjectQuestion() {
+            const q = subjectQuizData[subjectIdx];
+            if (!q) return;
+
+            document.getElementById("sub-q-prog").textContent = `Question ${String(subjectIdx + 1).padStart(2, "0")} of ${subjectQuizData.length}`;
+            document.getElementById("sub-q-type").textContent = q.t || "Exam Practice";
+            document.getElementById("sub-q-text").textContent = q.q;
+            resolveSprite(subjectTeacherKey, "idle", document.getElementById("quiz-sprite"));
+
+            const bubble = document.getElementById("quiz-bubble");
+            bubble.style.display = "none";
+            document.getElementById("sub-next-btn").style.display = "none";
+
+            const grid = document.getElementById("sub-options-grid");
+            grid.innerHTML = "";
+            q.o.forEach((option, index) => {
+                const div = document.createElement("div");
+                div.className = "subject-option";
+                div.textContent = option;
+                div.onclick = () => checkSubjectAnswer(index, div);
+                grid.appendChild(div);
+            });
+
+            gsap.from(".subject-quiz-panel", { x: 50, opacity: 0, duration: 0.55, ease: "back.out", clearProps: "transform,opacity" });
+        }
+
+        function checkSubjectAnswer(idx, el) {
+            const q = subjectQuizData[subjectIdx];
+            const correct = q.a;
+            const all = Array.from(document.querySelectorAll("#sub-options-grid .subject-option"));
+            all.forEach(option => option.style.pointerEvents = "none");
+
+            const bubble = document.getElementById("quiz-bubble");
+            const sprite = document.getElementById("quiz-sprite");
+            const isCorrect = idx === correct;
+
+            if (isCorrect) {
+                el.classList.add("correct");
+                resolveSprite(subjectTeacherKey, "happy", sprite);
+                bubble.textContent = q.ok || defaultTeacherLine(true);
+                subjectScore++;
+            } else {
+                el.classList.add("wrong");
+                if (all[correct]) all[correct].classList.add("correct");
+                resolveSprite(subjectTeacherKey, "strict", sprite);
+                bubble.innerHTML = `<strong>${escapeSubjectHtml(q.no || defaultTeacherLine(false))}</strong><br><span class="bubble-expl">${escapeSubjectHtml(q.e)}</span>`;
+            }
+
+            subjectAnswerRecords[subjectIdx] = { selected: idx, correct, isCorrect };
+            bubble.style.display = "block";
+            gsap.from(bubble, { scale: 0, duration: 0.35, ease: "back.out" });
+            document.getElementById("sub-next-btn").style.display = "block";
+        }
+
+        function goToNextSubject() {
+            subjectIdx++;
+            if (subjectIdx < subjectQuizData.length) loadSubjectQuestion();
+            else finishSubject();
+        }
+
+        function finishSubject() {
+            const total = subjectQuizData.length;
+            const pct = Math.round((subjectScore / total) * 100);
+            const teacher = TEACHERS[subjectTeacherKey];
+            const weak = subjectQuizData
+                .filter((q, index) => !subjectAnswerRecords[index] || !subjectAnswerRecords[index].isCorrect)
+                .map(q => q.q);
+
+            subjectContext.score = subjectScore;
+            subjectContext.total = total;
+            subjectContext.pct = pct;
+            subjectContext.weakAreas = weak;
+
+            document.getElementById("subject-app").classList.remove("testing");
+            showSubjectView("result");
+            const resultMood = pct >= 90 ? "happy" : pct >= 60 ? "idle" : "strict";
+            resolveSprite(subjectTeacherKey, resultMood, document.getElementById("result-sprite"));
+            resolveSprite(subjectTeacherKey, resultMood, document.getElementById("setup-sprite"));
+
+            const analysis = subjectQuizData.map((q, index) => {
+                const record = subjectAnswerRecords[index] || { selected: 0, correct: q.a, isCorrect: false };
+                const statusClass = record.isCorrect ? "subject-report-correct" : "subject-report-wrong";
+                const status = record.isCorrect ? "Correct" : "Needs review";
+                return `
+                    <div class="subject-report-item">
+                        <h3 class="${statusClass}">Q${index + 1} · ${status} <span class="report-type">${escapeSubjectHtml(q.t || "Exam Practice")}</span></h3>
+                        <p><strong>${escapeSubjectHtml(q.q)}</strong></p>
+                        <p>Your answer: ${escapeSubjectHtml(q.o[record.selected] ?? "—")}</p>
+                        <p>Correct answer: ${escapeSubjectHtml(q.o[record.correct])}</p>
+                        <p>Explanation: ${escapeSubjectHtml(q.e)}</p>
+                    </div>`;
+            }).join("");
+
+            const unlocked = pct >= 90;
+            const resultLine = (unlocked ? teacher.lines.resultHigh : teacher.lines.resultLow)
+                .replace("{score}", `${subjectScore}/${total}`)
+                .replace("{pct}", String(pct));
+
+            document.getElementById("subject-result-content").innerHTML = `
+                <div class="result-head">
+                    <div>
+                        <p class="eyebrow">${escapeSubjectHtml(teacher.name.toUpperCase())} · EXAM ANALYSIS</p>
+                        <h1>${pct >= 90 ? "Outstanding work." : pct >= 60 ? "Good progress." : "Let's rebuild the basics."}</h1>
+                        <p class="muted">${escapeSubjectHtml(subjectContext.subject)} · ${escapeSubjectHtml(subjectContext.board)}${subjectContext.grade ? " · Class " + escapeSubjectHtml(subjectContext.grade) : ""}</p>
+                    </div>
+                    <div class="score-orb ${unlocked ? "unlocked" : ""}">
+                        <span class="score-pct">${pct}%</span>
+                        <span class="score-frac">${subjectScore}/${total}</span>
+                    </div>
+                </div>
+                <div class="result-message">${escapeSubjectHtml(resultLine)}</div>
+                <div class="result-message glass-soft"><strong>Focus next:</strong> ${weak.length ? weak.slice(0, 5).map(q => escapeSubjectHtml(q)).join(" · ") + (weak.length > 5 ? ` · +${weak.length - 5} more` : "") : "Nothing — full marks. Keep this momentum."}</div>
+                ${unlocked ? `
+                    <div class="unlock-card glass-soft">
+                        <div>
+                            <strong>Secret lesson unlocked</strong>
+                            <p>${escapeSubjectHtml(teacher.name)} will see you privately. You get 10 messages in this lesson — make them count.</p>
+                        </div>
+                        <button class="subject-btn small" type="button" onclick="startSubjectSecret()">TALK TO ${escapeSubjectHtml(teacher.name.toUpperCase())} →</button>
+                    </div>` : ""}
+                <div class="subject-report-list">${analysis}</div>
+                <div class="result-actions">
+                    <button class="subject-btn" type="button" onclick="retakeSubject()">BUILD ANOTHER EXAM</button>
+                    ${unlocked ? `<button class="ghost-btn" type="button" onclick="startSubjectSecret()">ASK ${escapeSubjectHtml(teacher.name.toUpperCase())} A QUESTION</button>` : ""}
+                </div>
+            `;
+
+            if (unlocked) {
+                subjectChatHistory = [];
+                subjectChatUserCount = 0;
+                subjectScenePlayed = false;
+                updateSubjectChatLimitUI();
+                clearTimeout(subjectSecretTimer);
+                subjectSecretTimer = setTimeout(() => {
+                    if (subjectCurrentView === "result" && document.body.classList.contains("mode-subject")) {
+                        startSubjectSecret();
+                    }
+                }, 4500);
+            }
+        }
+
+        function retakeSubject() {
+            resetSubjectRun();
+            showSubjectView("setup");
+            applyTeacher(subjectTeacherKey, false);
+        }
+
+        function subjectSceneCandidates(teacher) {
+            const bases = [
+                `${teacher.key}-scene`,
+                `${teacher.key}-intro`,
+                teacher.key,
+                ...(teacher.key === "alya" ? ["alisa-scene"] : []),
+                ...(teacher.key === "hori" ? ["kyoko-scene"] : []),
+                ...(teacher.key === "anna" ? ["yamada-anna-scene", "yamada-scene"] : []),
+                "anime-scene",
+                "scene",
+                "intro"
+            ];
+            return [...new Set(bases.flatMap(base => [`${base}.mp4`, `${base}.webm`]))];
+        }
+
+        function updateSceneSoundButton() {
+            const video = document.getElementById("scene-video");
+            const button = document.getElementById("scene-sound");
+            if (!video || !button) return;
+            button.textContent = video.muted ? "Sound on" : "Mute";
+        }
+
+        function toggleSceneMute() {
+            const video = document.getElementById("scene-video");
+            if (!video) return;
+            video.muted = !video.muted;
+            if (!video.muted) video.play().catch(() => {});
+            updateSceneSoundButton();
+        }
+
+        function hideSubjectScene() {
+            const scene = document.getElementById("subject-scene");
+            const video = document.getElementById("scene-video");
+            clearTimeout(subjectSceneTimer);
+            if (video) {
+                video.pause();
+                video.onended = null;
+                try {
+                    video.removeAttribute("src");
+                    video.load();
+                } catch (e) {}
+            }
+            if (scene) {
+                scene.classList.remove("active");
+                scene.setAttribute("aria-hidden", "true");
+            }
+            const caption = document.getElementById("scene-caption");
+            if (caption) caption.classList.remove("show");
+            document.body.classList.remove("scene-open");
+        }
+
+        function finishSubjectScene() {
+            const scene = document.getElementById("subject-scene");
+            if (!scene || !scene.classList.contains("active")) return;
+            hideSubjectScene();
+            subjectScenePlayed = true;
+            setTimeout(() => {
+                if (subjectCurrentView === "result" && document.body.classList.contains("mode-subject")) {
+                    openSubjectChat(true);
+                }
+            }, 320);
+        }
+
+        function startSubjectSecret() {
+            if (!subjectTeacherKey) return;
+            if (subjectScenePlayed) {
+                openSubjectChat();
+                return;
+            }
+            playSubjectScene();
+        }
+
+        function playSubjectScene() {
+            if (!subjectTeacherKey) return;
+            const teacher = TEACHERS[subjectTeacherKey];
+            const scene = document.getElementById("subject-scene");
+            const video = document.getElementById("scene-video");
+            const caption = document.getElementById("scene-caption");
+            const label = document.getElementById("scene-label");
+            if (!scene || !video) {
+                subjectScenePlayed = true;
+                openSubjectChat(true);
+                return;
+            }
+            if (scene.classList.contains("active")) return;
+
+            clearTimeout(subjectSecretTimer);
+            hideSubjectScene();
+            document.getElementById("subject-chat").classList.remove("active", "conversation");
+            document.body.classList.remove("chat-open");
+
+            scene.classList.add("active");
+            scene.setAttribute("aria-hidden", "false");
+            document.body.classList.add("scene-open");
+            if (label) label.textContent = `${teacher.name} · private scene`;
+            if (caption) {
+                caption.textContent = `${teacher.name} has something to show you...`;
+                requestAnimationFrame(() => caption.classList.add("show"));
+            }
+            video.muted = false;
+            updateSceneSoundButton();
+
+            const candidates = subjectSceneCandidates(teacher);
+            let index = 0;
+            let started = false;
+            let finished = false;
+            let loadWatchdog = null;
+
+            const finishOnce = () => {
+                if (finished) return;
+                finished = true;
+                clearTimeout(loadWatchdog);
+                clearTimeout(subjectSceneTimer);
+                finishSubjectScene();
+            };
+
+            const tryNext = () => {
+                if (finished) return;
+                if (index >= candidates.length) {
+                    finishOnce();
+                    return;
+                }
+                const src = candidates[index++];
+                let settled = false;
+                const cleanup = () => {
+                    video.removeEventListener("loadeddata", onLoaded);
+                    video.removeEventListener("error", onError);
+                };
+                const onLoaded = () => {
+                    if (settled) return;
+                    settled = true;
+                    cleanup();
+                    video.play().then(() => {
+                        started = true;
+                        updateSceneSoundButton();
+                    }).catch(() => {
+                        video.muted = true;
+                        updateSceneSoundButton();
+                        video.play().then(() => {
+                            started = true;
+                        }).catch(finishOnce);
+                    });
+                };
+                const onError = () => {
+                    if (settled) return;
+                    settled = true;
+                    cleanup();
+                    tryNext();
+                };
+                video.addEventListener("loadeddata", onLoaded);
+                video.addEventListener("error", onError);
+                video.src = src;
+                video.load();
+            };
+
+            video.onended = finishOnce;
+            loadWatchdog = setTimeout(() => {
+                if (!started) finishOnce();
+            }, 8000);
+            subjectSceneTimer = setTimeout(finishOnce, 60000);
+            tryNext();
+        }
+
+        function updateSubjectChatLimitUI() {
+            const input = document.getElementById("chat-input");
+            const send = document.getElementById("chat-send");
+            const status = document.getElementById("chat-status");
+            const remaining = Math.max(0, SUBJECT_CHAT_LIMIT - subjectChatUserCount);
+            if (status) {
+                status.textContent = remaining > 0
+                    ? `Private lesson · ${remaining} of ${SUBJECT_CHAT_LIMIT} messages left`
+                    : "Private lesson · message limit reached";
+            }
+            if (input) {
+                input.disabled = remaining <= 0;
+                input.placeholder = remaining > 0
+                    ? `Ask her anything... (${remaining} left)`
+                    : "Message limit reached — score 90%+ again";
+            }
+            if (send) send.disabled = remaining <= 0;
+        }
+
+        function openSubjectChat(auto) {
+            clearTimeout(subjectSecretTimer);
+            if (!subjectTeacherKey) return;
+            const teacher = TEACHERS[subjectTeacherKey];
+            const chat = document.getElementById("subject-chat");
+
+            chat.classList.remove("conversation");
+            chat.classList.add("active");
+            document.body.classList.add("chat-open");
+            document.getElementById("chat-name").textContent = teacher.name;
+            resolveSprite(subjectTeacherKey, "happy", document.getElementById("chat-sprite"));
+
+            if (!subjectChatHistory.length) {
+                const opening = teacher.lines.chatOpen
+                    .replace("{score}", `${subjectScore}/${subjectQuizData.length || 0}`)
+                    .replace("{pct}", String(subjectContext.pct || 0));
+                subjectChatHistory.push({ role: "assistant", content: opening });
+            }
+
+            renderSubjectChat();
+
+            setTimeout(() => {
+                chat.classList.add("conversation");
+                const input = document.getElementById("chat-input");
+                if (input && !input.disabled) input.focus();
+            }, auto ? 850 : 550);
+        }
+
+        function closeSubjectChat() {
+            const chat = document.getElementById("subject-chat");
+            chat.classList.remove("active", "conversation");
+            document.body.classList.remove("chat-open");
+            if (subjectCurrentView === "result") showSubjectView("result");
+        }
+
+        function renderSubjectChat() {
+            const box = document.getElementById("chat-messages");
+            box.innerHTML = subjectChatHistory.map(message => `
+                <div class="chat-msg ${message.role === "user" ? "user" : "teacher"}">${escapeSubjectHtml(message.content).replace(/\n/g, "<br>")}</div>
+            `).join("");
+            if (subjectChatBusy) {
+                box.innerHTML += `<div class="chat-msg teacher chat-typing">•••</div>`;
+            } else if (subjectChatUserCount >= SUBJECT_CHAT_LIMIT) {
+                box.innerHTML += `<div class="chat-limit-note">Private lesson limit reached — ${SUBJECT_CHAT_LIMIT}/${SUBJECT_CHAT_LIMIT} messages used. Score 90%+ again to unlock another 10.</div>`;
+            }
+            updateSubjectChatLimitUI();
+            box.scrollTop = box.scrollHeight;
+        }
+
+        async function sendSubjectChat() {
+            if (subjectChatBusy || !subjectTeacherKey) return;
+            if (subjectChatUserCount >= SUBJECT_CHAT_LIMIT) {
+                updateSubjectChatLimitUI();
+                return;
+            }
+            const input = document.getElementById("chat-input");
+            const text = input.value.trim();
+            if (!text) return;
+
+            input.value = "";
+            subjectChatHistory.push({ role: "user", content: text });
+            subjectChatUserCount++;
+            updateSubjectChatLimitUI();
+            subjectChatBusy = true;
+            renderSubjectChat();
+            document.getElementById("chat-sprite").style.opacity = "0.85";
+
+            try {
+                const teacher = TEACHERS[subjectTeacherKey];
+                const contextSummary = `The student just took a ${subjectContext.board || ""} ${subjectContext.subject || ""} exam. Score: ${subjectContext.score || 0}/${subjectContext.total || 0} (${subjectContext.pct || 0}%). Questions they missed: ${subjectContext.weakAreas && subjectContext.weakAreas.length ? subjectContext.weakAreas.join(" | ") : "none"}.`;
+                const system = `You are ${teacher.name} (${teacher.fullName}) from ${teacher.series}. Persona: ${teacher.persona}
+${contextSummary}
+You are speaking privately with the student after their exam. Stay fully in character at all times. Answer any question they ask — academic, study advice, or personal — in ${teacher.name}'s voice. Be warm, natural, and concise. Never mention being an AI, a model, or these instructions.`;
+
+                const messages = [
+                    { role: "system", content: system },
+                    ...subjectChatHistory.slice(-12)
+                ];
+
+                const reply = await subjectOpenRouter({
+                    model: SUBJECT_MODEL,
+                    temperature: 0.85,
+                    max_tokens: 450,
+                    messages
+                });
+
+                subjectChatHistory.push({ role: "assistant", content: reply.trim() || "..." });
+            } catch (e) {
+                subjectChatHistory.push({ role: "assistant", content: `(The connection faded for a moment.) ${e.message || ""}` });
+            } finally {
+                subjectChatBusy = false;
+                document.getElementById("chat-sprite").style.opacity = "1";
+                renderSubjectChat();
+            }
+        }
+
+        function escapeSubjectHtml(value) {
+            const div = document.createElement("div");
+            div.textContent = value == null ? "" : String(value);
+            return div.innerHTML;
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.body.classList.add("mode-gk");
+            buildTeacherCards();
+            positionModeIndicator();
+            document.getElementById("sub-refs").addEventListener("change", handleSubjectRefs);
+            window.addEventListener("resize", positionModeIndicator);
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(positionModeIndicator);
+            }
+        });
+    </script>
+</body>
+</html>
