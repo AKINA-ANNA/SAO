@@ -2,12 +2,10 @@ const TAVILY_URL = "https://api.tavily.com/search";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 function applyCors(req, res) {
-  const allowedOrigin = process.env.ALLOWED_ORIGIN;
+  // Defaults to this production site; set ALLOWED_ORIGIN in Nhost to override it.
+  const allowedOrigin = process.env.ALLOWED_ORIGIN || "https://study-as-otaku.vercel.app";
   const origin = req.get("origin");
 
-  if (!allowedOrigin) {
-    throw new Error("ALLOWED_ORIGIN is not configured.");
-  }
   if (origin && origin !== allowedOrigin) {
     return false;
   }
